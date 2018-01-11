@@ -30,7 +30,7 @@ for filename in images:
     img = cv2.imread(filename)
 
     #Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2COLOR)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     #Find corners
     ret, corners = cv2.findChessboardCorners(gray, (nX, nY), None)
@@ -40,6 +40,6 @@ for filename in images:
         objPoints.append(objPoint)
 
 # Save the imgPoints and objPoints to a pickle file
-toSave = { imgPoints: imgPoints, objPoints: objPoints }
+toSave = { "imgPoints": imgPoints, "objPoints": objPoints }
 with open(output_file, 'wb') as saveFile:
     pickle.dump(toSave, saveFile)
