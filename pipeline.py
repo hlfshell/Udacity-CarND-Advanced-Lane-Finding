@@ -11,10 +11,10 @@ with open("./camera_calibration.p", "rb") as filename:
 
 # interest_area is the area of the road we're interested in - changeable in function, set here for ease of use
 interest_area = np.float32([
-                    [556, 456],
-                    [742, 456],
-                    [211, 670],
-                    [1080, 670]
+                    [480, 456],
+                    [900, 456],
+                    [1200, 670],
+                    [140, 670]
                 ])
 
 # This is a helper function to help me define the interest_area for test images.
@@ -24,7 +24,7 @@ def testInterestArea(img, area=None):
     if area is None:
         area = interest_area
 
-    cv2.polylines(img, area, True)
+    cv2.polylines(img, np.int32([area]), True, color=(255, 0, 0))
     plt.figure()
     plt.suptitle("Interest Area")
     plt.imshow(img)
@@ -56,6 +56,10 @@ def undistort(img, debug=False):
         plt.show()
 
     return undistorted
+
+# Color / gradient threholding
+def colorGradientThreshold(img, debug=False):
+    pass
 
 
 # perspective transform
@@ -103,6 +107,7 @@ def pipeline(img, debug=False):
     undistorted = undistort(img, debug)
 
     # Color / gradient threshold
+
 
     # Perspective transform
     transformed = perspectiveTransform(img, debug=debug)
