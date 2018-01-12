@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from random import randint
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# DEFAULTS
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Load up the camera-calibration pickle
 with open("./camera_calibration.p", "rb") as filename:
@@ -16,6 +19,10 @@ interest_area = np.float32([
                     [1200, 670],
                     [140, 670]
                 ])
+
+color_thresholds = { "h": (0, 100), "s": (0, 100) }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # This is a helper function to help me define the interest_area for test images.
 def testInterestArea(img, area=None):
@@ -58,7 +65,7 @@ def undistort(img, debug=False):
     return undistorted
 
 # Color / gradient threholding
-def colorGradientThreshold(img, debug=False):
+def colorThreshold(img, threshold=None, debug=False):
     pass
 
 
@@ -104,8 +111,10 @@ def pipeline(img, debug=False):
     # Undistort image
     undistorted = undistort(img, debug)
 
-    # Color / gradient threshold
+    # Color threshold
+    # colorThreshold
 
+    #Gradient threshold
 
     # Perspective transform
     transformed = perspectiveTransform(img, debug=debug)
