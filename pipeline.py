@@ -1,6 +1,8 @@
 import cv2
 import pickle
 import matplotlib.pyplot as plt
+import numpy as np
+from random import randint
 
 
 # Load up the camera-calibration pickle
@@ -8,20 +10,42 @@ with open("./camera_calibration.p", "rb") as filename:
     camera_calibration = pickle.load(filename)
 
 # interest_area is the area of the road we're interested in - changeable in function, set here for ease of use
-interest_area = [   [],
-                    [],
-                    [],
-                    []
-                ]
+interest_area = np.float32([
+                    [556, 456],
+                    [742, 456],
+                    [211, 670],
+                    [1080, 670]
+                ])
 
 # This is a helper function to help me define the interest_area for test images.
-def testInterestArea(area):
-    pass
+def testInterestArea(img, area=None):
+    global interest_area
+
+    if area is None:
+        area = interest_area
+
+    cv2.polylines(img, area, True)
+    plt.figure()
+    plt.suptitle("Interest Area")
+    plt.imshow(img)
+    plt.show()
+
+def grabTestImage(imgNum=None):
+    if imgNum is None:
+        imgNum = randint(1, 6)
+
+    img = cv2.imread("./test_images/test" + str(imgNum) + ".jpg")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    return img
 
 # given an image, undistory per camera calibration
 def undistort(img, debug=False):
+    image_size = (img.shape[1], img.shape[0])
+
     # calibrate the camera
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(camera_calibration["objPoints"], camera_calibration["imgPoints"], img.shape[::-1], None, None)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(camera_calibration["objPoints"], camera_calibration["imgPoints"], image_size, None, None)
+
     # use calibration to undistort image
     undistorted = cv2.undistort(img, mtx, dist, None, mtx)
 
@@ -29,31 +53,34 @@ def undistort(img, debug=False):
         plt.figure()
         plt.suptitle("Undistortion/Camera Correction")
         plt.imshow(undistorted)
+        plt.show()
 
     return undistorted
 
 
 # perspective transform
 # img - input image
-# corners - list of tuples to make up the corner
 # transform_area - the area we are transforming from
 # to_area - the area that area should be warped to fit
 # debug - whether or not to show debug information/image display on this step
-def perspectiveTransform(img, corners, transform_area=None, to_area=None , debug=False):
+def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
     img_size = (img.shape[1], img.shape[0])
 
     # By default, the to_area is to make the warped perspective area the whole image size, done here:
     if to_area is None:
-        to_area = [  [0, 0],
+        to_area = np.float32([ 
+                     [0, 0],
                      [img_size[0] - 1, 0],
                      [img_size[0] - 1, img_size[1] - 1],
                      [0, img_size[1] - 1]
-                  ]
+                  ])
 
     # If no transform_area is provided, assume it's the interest_area by default
     if transform_area is None:
         global interest_area
         transform_area = interest_area
+
+    print(to_area, transform_area)
 
     # Convert destination points to points post perspective transformation
     transform_matrix = cv2.getPerspectiveTransform(transform_area, to_area)
@@ -65,6 +92,7 @@ def perspectiveTransform(img, corners, transform_area=None, to_area=None , debug
         plt.figure()
         plt.suptitle("Perspective Transformation")
         plt.imshow(warped)
+        plt.show()
 
     return warped
 
@@ -72,10 +100,12 @@ def perspectiveTransform(img, corners, transform_area=None, to_area=None , debug
 def pipeline(img, debug=False):
 
     # Undistort image
+    undistorted = undistort(img, debug)
 
     # Color / gradient threshold
 
     # Perspective transform
+    transformed = perspectiveTransform(img, debug=debug)
 
     #  Detect lane lines
 
