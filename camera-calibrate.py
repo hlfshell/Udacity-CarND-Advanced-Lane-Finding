@@ -20,7 +20,7 @@ imgPoints = [] # imgPoints are detected chessboard corners
 
 #Create an array of object points
 objPoint = np.zeros((nX * nY, 3), np.float32)
-objPoint = np.mgrid[0:nX, 0:nY].T.reshape(-1, 2) # X, Y
+objPoint[:,:2] = np.mgrid[0:nX, 0:nY].T.reshape(-1, 2) # X, Y
 
 # Grab images and iterate over them 
 images = glob(images_folder + "/calibration*.jpg")
