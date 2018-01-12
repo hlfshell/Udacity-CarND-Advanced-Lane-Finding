@@ -84,8 +84,6 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
         global interest_area
         transform_area = interest_area
 
-    print(to_area, transform_area)
-
     # Convert destination points to points post perspective transformation
     transform_matrix = cv2.getPerspectiveTransform(transform_area, to_area)
 
