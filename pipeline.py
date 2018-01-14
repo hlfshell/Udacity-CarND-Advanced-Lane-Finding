@@ -20,7 +20,7 @@ interest_area = np.float32([
                     [140, 670]
                 ])
 
-color_thresholds = { "h": (0, 100), "s": (0, 100) }
+color_thresholds = { "h": (15, 100), "s": (90, 255) }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -65,9 +65,93 @@ def undistort(img, debug=False):
     return undistorted
 
 # Color / gradient threholding
-def colorThreshold(img, threshold=None, debug=False):
-    pass
+# img - the image being worked on
+# thresholds - dict of { "h": tuple, "s": tuple } where each tuple is (low, high)
+# returns hue_mask, saturation_mask, combined_mask
+def colorThreshold(img, thresholds=None, debug=False):
+    if thresholds is None:
+        thresholds = color_thresholds
 
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+
+    h_channel = hls[:,:,0]
+    s_channel = hls[:,:,2]
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Hue mask")
+        plt.imshow(h_channel)
+        plt.show()
+        plt.figure()
+        plt.suptitle("Saturation mask")
+        plt.imshow(s_channel)
+        plt.show()
+
+    binary_mask_h = np.zeros_like(h_channel)
+    binary_mask_s = np.zeros_like(s_channel)
+    binary_mask_combined = np.zeros_like(h_channel)
+
+    binary_mask_h[ (h_channel > thresholds["h"][0]) & (h_channel <= thresholds["h"][1]) ] = 1
+    binary_mask_s[ (s_channel > thresholds["s"][0]) & (s_channel <= thresholds["s"][1]) ] = 1
+    binary_mask_combined[ (h_channel > thresholds["h"][0]) & (h_channel <= thresholds["h"][1]) & (s_channel > thresholds["s"][0]) & (s_channel <= thresholds["s"][1]) ] = 1
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Binary Mask of Hue Thresholds")
+        plt.imshow(binary_mask_h)
+        plt.show()
+
+        plt.figure()
+        plt.suptitle("Binary Mask of Saturation Thresholds")
+        plt.imshow(binary_mask_s)
+        plt.show()
+
+        plt.figure()
+        plt.suptitle("Binary Mask of Hue/Saturation Thresholds")
+        plt.imshow(binary_mask_combined)
+        plt.show()
+
+    return binary_mask_h, binary_mask_s, binary_mask_combined
+
+def sobelGradient(img, threshold=[20, 100], debug=True):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0)
+    abs_sobelx = np.absolute(sobelx)
+    scaled_sobel = np.uint8(255 * abs_sobelx/np.max(abs_sobelx))
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Absolute Scaled Sobel X Gradient")
+        plt.imshow(scaled_sobel)
+        plt.show()
+
+    sobel_binary = np.zeros_like(scaled_sobel)
+    sobel_binary[ (scaled_sobel >= threshold[0]) & (scaled_sobel <= threshold[1]) ] = 1
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Absolute Scaled Sobel Threshold")
+        plt.imshow(sobel_binary, cmap="gray")
+        plt.show()
+
+
+    return scaled_sobel, sobel_binary
+
+def combinedThresholds(img, debug=True):
+    hue_mask, saturation_mask, combined_mask = colorThreshold(img, debug=debug)
+    scaled_sobel, sobel_threshold = sobelGradient(img, debug=debug)
+
+    combined = np.dstack(( np.zeros_like(scaled_sobel), scaled_sobel, combined_mask)) * 255
+
+    print(combined)
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Combined Gradients and Thresholds")
+        plt.imshow(combined)
+        plt.show()
+
+    return combined
 
 # perspective transform
 # img - input image
