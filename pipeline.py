@@ -113,41 +113,122 @@ def colorThreshold(img, thresholds=None, debug=False):
 
     return binary_mask_h, binary_mask_s, binary_mask_combined
 
-def sobelGradient(img, threshold=[20, 100], debug=True):
+def absoluteSobel(img, threshold={ "x": (40, 255), "y": (80, 255) }, debug=False):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0)
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=7)
     abs_sobelx = np.absolute(sobelx)
-    scaled_sobel = np.uint8(255 * abs_sobelx/np.max(abs_sobelx))
+    scaled_sobelx = np.uint8(255 * abs_sobelx/np.max(abs_sobelx))
+
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=7)
+    abs_sobely = np.absolute(sobely)
+    scaled_sobely = np.uint8(255 * abs_sobely/np.max(abs_sobely))
+
+    sobel_binaryx = np.zeros_like(scaled_sobelx)
+    sobel_binaryx[ (scaled_sobelx >= threshold["x"][0]) & (scaled_sobelx <= threshold["x"][1]) ] = 1
+
+    sobel_binaryy = np.zeros_like(scaled_sobely)
+    sobel_binaryy[ (scaled_sobely >= threshold["y"][0]) & (scaled_sobely <= threshold["y"][1]) ] = 1
 
     if debug is True:
         plt.figure()
         plt.suptitle("Absolute Scaled Sobel X Gradient")
-        plt.imshow(scaled_sobel)
+        plt.imshow(scaled_sobelx)
         plt.show()
 
-    sobel_binary = np.zeros_like(scaled_sobel)
-    sobel_binary[ (scaled_sobel >= threshold[0]) & (scaled_sobel <= threshold[1]) ] = 1
+        plt.figure()
+        plt.suptitle("Absolute Scaled Sobel X Threshold")
+        plt.imshow(sobel_binaryx, cmap="gray")
+        plt.show()
+
+        plt.figure()
+        plt.suptitle("Absolute Scaled Sobel Y Gradient")
+        plt.imshow(scaled_sobely)
+        plt.show()
+
+        plt.figure()
+        plt.suptitle("Absolute Scaled Sobel Y Threshold")
+        plt.imshow(sobel_binaryy, cmap="gray")
+        plt.show()
+
+
+    return scaled_sobelx, sobel_binaryx, scaled_sobely, sobel_binaryy
+
+def magnitudeSobel(img, threshold=(60, 255), debug=False):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=7)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=7)
+
+    sobel = np.sqrt(sobelx ** 2 + sobely ** 2)
+
+    scaled_sobel = np.uint8(255*sobel/np.max(sobel))
+
+    binary_mask = np.zeros_like(scaled_sobel)
+    binary_mask[ (scaled_sobel > threshold[0]) & (scaled_sobel < threshold[1]) ] = 1
 
     if debug is True:
         plt.figure()
-        plt.suptitle("Absolute Scaled Sobel Threshold")
-        plt.imshow(sobel_binary, cmap="gray")
+        plt.suptitle("Magnitude Sobel Threshold")
+        plt.imshow(scaled_sobel, cmap="gray")
         plt.show()
 
+        plt.figure()
+        plt.suptitle("Magnitude Sobel Binary Mask")
+        plt.imshow(binary_mask, cmap="gray")
+        plt.show()
 
-    return scaled_sobel, sobel_binary
+    return scaled_sobel, binary_mask
 
-def combinedThresholds(img, debug=True):
-    hue_mask, saturation_mask, combined_mask = colorThreshold(img, debug=debug)
-    scaled_sobel, sobel_threshold = sobelGradient(img, debug=debug)
+def directionalSobel(img, threshold=(0.85, 1.0), debug=False):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=7)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=7)
 
-    combined = np.dstack(( np.zeros_like(scaled_sobel), scaled_sobel, combined_mask)) * 255
-
-    print(combined)
+    directionalSobel = np.absolute(np.arctan(sobely/sobelx))
+    directionalBinary = np.zeros_like(directionalSobel)
+    directionalBinary[ (directionalSobel > threshold[0]) & (directionalSobel < threshold[1]) ] = 1
 
     if debug is True:
         plt.figure()
-        plt.suptitle("Combined Gradients and Thresholds")
+        plt.suptitle("Directional Sobel Mask")
+        plt.imshow(directionalSobel)
+        plt.show()
+        
+        plt.figure()
+        plt.suptitle("Directional Sobel Binary Mask")
+        plt.imshow(directionalBinary)
+        plt.show()
+
+    return directionalSobel, directionalBinary
+
+def combinedSobel(img, debug=True):
+    _, sobel_binaryx, _, sobel_binaryy = absoluteSobel(img, debug=debug)
+    _, magnitude_binary = magnitudeSobel(img, debug=debug)
+    # _, directional_binary = directionalSobel(img, debug=debug)
+
+    combined = np.zeros_like(sobel_binaryx)
+    # combined[ (sobel_binaryx == 1) | (sobel_binaryy == 1) | (magnitude_binary == 1) | (directional_binary == 1) ] = 1
+    combined[ (sobel_binaryx == 1) | (sobel_binaryy == 1) | (magnitude_binary == 1) ] = 1
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Combined Sobel Gradients")
+        plt.imshow(combined)
+        plt.show()
+
+    return combined
+
+def combinedThresholds(img, debug=False):
+    sobelMask = combinedSobel(img, debug=debug)
+    hMask, sMask, combinedColorMask = colorThreshold(img, debug=debug)
+
+    combined = np.zeros_like(sobelMask)
+    combined[ (combinedColorMask > 0) | (sobelMask > 0) ]=1
+
+    if debug is True:
+        plt.figure()
+        plt.suptitle("Combined Sobel and Color Thresholds")
         plt.imshow(combined)
         plt.show()
 
@@ -193,15 +274,18 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
 def pipeline(img, debug=False):
 
     # Undistort image
-    undistorted = undistort(img, debug)
+    undistorted = undistort(img, debug=debug)
 
-    # Color threshold
-    # colorThreshold
-
-    #Gradient threshold
+    # Color and Sobel thresholds
+    combinedThreshold = combinedThresholds(img, debug=debug)
 
     # Perspective transform
-    transformed = perspectiveTransform(img, debug=debug)
+    overheadThreshold = perspectiveTransform(combinedThreshold, debug=debug)
+
+    plt.figure()
+    plt.suptitle("Overhead threshold")
+    plt.imshow(overheadThreshold)
+    plt.show()
 
     #  Detect lane lines
 
