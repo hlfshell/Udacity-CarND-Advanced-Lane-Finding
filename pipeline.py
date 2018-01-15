@@ -371,16 +371,48 @@ def detectLaneLines(img, debug=False):
         plt.ylim(720, 0)
         plt.show()
 
-    return left_lane_polynomial, right_lane_polynomial
+    # Calculate the curvature
 
-def calculateCurvature(img, left_lane_polynomial, right_lane_polynomial):
-    #Pick the height of the image to work with
+    # First, how many meters per pixel (given via udacity - camera specific)
+    meters_per_pix_y = 30/720
+    meters_per_pix_x = 3.7/700
+
     y = img.shape[0] - 1
 
-    leftCurveRadians =  ((1 + (2*left_lane_polynomial[0]*y + left_lane_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_polynomial)
-    rightCurveRadians = ((1 + (2*right_lane_polynomial[0]*y + right_lane_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_polynomial)
+    left_lane_meters_polynomial = np.polyfit(lefty * meters_per_pix_y, leftx * meters_per_pix_x, 2)
+    right_lane_meters_polynomial = np.polyfit(righty * meters_per_pix_y, rightx * meters_per_pix_x, 2)
 
-    print(leftCurveRadians, rightCurveRadians)
+    leftCurveRadius =  ((1 + (2*left_lane_meters_polynomial[0]*y*meters_per_pix_y + left_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_meters_polynomial[0])
+    rightCurveRadius = ((1 + (2*right_lane_meters_polynomial[0]*y*meters_per_pix_y + right_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*right_lane_meters_polynomial[0])
+
+    # Average curve should be the difference
+    averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
+
+    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius
+
+# drawLane - draws in the lane via a polygon calculated from polynomials
+# img - input
+# left_lane - polynomial for lane curvature
+# right_lane - polynomial for lane curvature
+# returns - image with polygon drawn over lane
+def drawLane(img, left_lane, right_lane):
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA)
+
+    # y_start is where we paid attention to - the interest area - and we should start there and move DOWN
+    y_start = int(interest_area[0][1])
+    y_end = int(interest_area[2][1])
+
+    polynomialPoints = []
+
+    for i in range(y_start, y_end):
+        polynomialPoints.append( ( (i * left_lane[0]**2) + (i * left_lane[1]) + left_lane[2] , i ) )
+
+    for i in range(y_end - 1, y_start - 1, -1):
+        polynomialPoints.append( ( (i * right_lane[0]**2) + (i * right_lane[1]) + right_lane[2] , i ) )
+
+    drawnLane = cv2.fillPoly(img, np.int32([polynomialPoints]), color=(0, 255, 0, 0.5))
+
+    return drawnLane
 
 #pipeline - accepts an image, returns ???
 def pipeline(img, debug=False):
@@ -394,17 +426,16 @@ def pipeline(img, debug=False):
     # Perspective transform
     overheadThreshold = perspectiveTransform(combinedThreshold, debug=debug)
 
+    #  Detect lane lines
+    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius = detectLaneLines(overheadThreshold, debug=True)
+
+    # Draw onto image lane
+    highlightedLane = drawLane(img, left_lane_polynomial, right_lane_polynomial)
+
     plt.figure()
-    plt.suptitle("Overhead threshold")
-    plt.imshow(overheadThreshold)
+    plt.suptitle("Drawn lane")
+    plt.imshow(highlightedLane)
     plt.show()
 
-    #  Detect lane lines
-    left_lane, right_lane = detectLaneLines(overheadThreshold, debug=True)
-
-    # Calculate lane curvature
-    calculateCurvature(img, left_lane, right_lane)
-
-    # Calculate distance from center for car
 
     pass
