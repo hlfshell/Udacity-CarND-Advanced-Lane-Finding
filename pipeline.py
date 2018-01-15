@@ -14,8 +14,8 @@ with open("./camera_calibration.p", "rb") as filename:
 
 # interest_area is the area of the road we're interested in - changeable in function, set here for ease of use
 interest_area = np.float32([
-                    [480, 456],
-                    [900, 456],
+                    [480, 500],
+                    [850, 500],
                     [1200, 670],
                     [140, 670]
                 ])
@@ -270,6 +270,118 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
 
     return warped
 
+#detectLaneLines
+# img - input image (overhead threshold)
+# debug - whether or not to show debug info
+# returns leftLinePoints, rightLinePoints
+def detectLaneLines(img, debug=False):
+    histogram = np.sum( img[ int(img.shape[0]/2):,:], axis=0)
+
+    if debug is True:
+        # Create an output image to draw on - make it 3 channel from our single channel
+        # and multiply by 255 to set the 1's to 255
+        out_img = np.dstack( (img, img, img) ) * 255
+
+    # Define our image midpoint (via histogram shape, since we're working with that)
+    midpoint = np.int(histogram.shape[0]/2)
+    # Left peak base
+    leftx_base = np.argmax(histogram[:midpoint])
+    # Right peak base
+    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+
+    # How many sliding windows/convolutions do we do vertically?
+    nWindows = 9 
+    
+    # Height of each window is calculated off of that
+    window_height = np.int(img.shape[0] / nWindows)
+
+    nonzero = img.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+
+    # Current positions that are updated on each window
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+    
+    # Set width of windows w/ margin
+    margin = 100
+
+    # Set the minimum number of pixels found to recenter window
+    minpix = 50
+
+    # Empty lists to hold each index of center point of left/right lanes
+    left_lane_indexes = []
+    right_lane_indexes = []
+
+    # Go through window step by step
+    for window in range(nWindows):
+        
+        window_y_low = img.shape[0] - (window + 1) * window_height
+        window_y_high = img.shape[0] - window * window_height
+
+        window_xleft_low = leftx_current - margin
+        window_xleft_high = leftx_current + margin
+        window_xright_low = rightx_current - margin
+        window_xright_high = rightx_current + margin
+
+        #Draw windows if debugging
+        if debug is True:
+            cv2.rectangle(out_img, (window_xleft_low, window_y_low), (window_xleft_high, window_y_high), color= (0,0,255))
+            cv2.rectangle(out_img, (window_xright_low, window_y_low), (window_xright_high, window_y_high), color= (0,0,255))
+
+        good_left_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xleft_low) & (nonzerox < window_xleft_high) ).nonzero()[0]
+        good_right_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xright_low) & (nonzerox < window_xright_high) ).nonzero()[0]
+
+        left_lane_indexes.append(good_left_indexes)
+        right_lane_indexes.append(good_right_indexes)
+
+        # If we detect below a certain # of pixels, recenter window
+        if len(good_left_indexes) > minpix:
+            leftx_current = np.int(np.mean(nonzerox[good_left_indexes]))
+        if len(good_right_indexes) > minpix:
+            rightx_current = np.int(np.mean(nonzerox[good_right_indexes]))
+
+    left_lane_indexes = np.concatenate(left_lane_indexes)
+    right_lane_indexes = np.concatenate(right_lane_indexes)
+
+    leftx = nonzerox[left_lane_indexes]
+    lefty = nonzeroy[left_lane_indexes]
+    rightx = nonzerox[right_lane_indexes]
+    righty = nonzeroy[right_lane_indexes]
+
+    # Fit a polynomial to each
+    left_lane_polynomial = np.polyfit(lefty, leftx, 2)
+    right_lane_polynomial = np.polyfit(righty, rightx, 2)
+
+    # If debugging, draw lane lines
+    if debug is True:
+        ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+        left_fitx = left_lane_polynomial[0]*ploty** 2 + left_lane_polynomial[1]*ploty + left_lane_polynomial[2]
+        right_fitx = right_lane_polynomial[0]*ploty**2 + right_lane_polynomial[1]*ploty + right_lane_polynomial[2]
+
+        out_img[nonzeroy[left_lane_indexes], nonzerox[left_lane_indexes]] = [255, 0, 0]
+        out_img[nonzeroy[right_lane_indexes], nonzerox[right_lane_indexes]] = [0, 0, 255]
+
+        plt.figure()
+        plt.suptitle("Extrapolated Lane Lines")
+        plt.imshow(out_img)
+        plt.plot(left_fitx, ploty, color='yellow')
+        plt.plot(right_fitx, ploty, color='yellow')
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
+        plt.show()
+
+    return left_lane_polynomial, right_lane_polynomial
+
+def calculateCurvature(img, left_lane_polynomial, right_lane_polynomial):
+    #Pick the height of the image to work with
+    y = img.shape[0] - 1
+
+    leftCurveRadians =  ((1 + (2*left_lane_polynomial[0]*y + left_lane_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_polynomial)
+    rightCurveRadians = ((1 + (2*right_lane_polynomial[0]*y + right_lane_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_polynomial)
+
+    print(leftCurveRadians, rightCurveRadians)
+
 #pipeline - accepts an image, returns ???
 def pipeline(img, debug=False):
 
@@ -288,8 +400,10 @@ def pipeline(img, debug=False):
     plt.show()
 
     #  Detect lane lines
+    left_lane, right_lane = detectLaneLines(overheadThreshold, debug=True)
 
-    # Calculate lane curvature 
+    # Calculate lane curvature
+    calculateCurvature(img, left_lane, right_lane)
 
     # Calculate distance from center for car
 
