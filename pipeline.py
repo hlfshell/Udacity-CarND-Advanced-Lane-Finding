@@ -258,6 +258,7 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
 
     # Convert destination points to points post perspective transformation
     transform_matrix = cv2.getPerspectiveTransform(transform_area, to_area)
+    inverse_transform_matrix = cv2.getPerspectiveTransform(to_area, transform_area)
 
     # Use the matrix to perform a perspective transformation
     warped = cv2.warpPerspective(img, transform_matrix, img_size)
@@ -268,7 +269,7 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
         plt.imshow(warped)
         plt.show()
 
-    return warped
+    return warped, transform_matrix, inverse_transform_matrix
 
 #detectLaneLines
 # img - input image (overhead threshold)
@@ -388,31 +389,55 @@ def detectLaneLines(img, debug=False):
     # Average curve should be the difference
     averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
 
-    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius
+    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx
 
 # drawLane - draws in the lane via a polygon calculated from polynomials
 # img - input
 # left_lane - polynomial for lane curvature
 # right_lane - polynomial for lane curvature
 # returns - image with polygon drawn over lane
-def drawLane(img, left_lane, right_lane):
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA)
+def drawLane(img, overhead, Minv, lefty, leftx, righty, rightx):
+
+    #We draw the polynomial in the overhead clone first
+    canvas = np.zeros_like(overhead).astype(np.uint8)
+    canvas = np.dstack((canvas, canvas, canvas))
 
     # y_start is where we paid attention to - the interest area - and we should start there and move DOWN
     y_start = int(interest_area[0][1])
     y_end = int(interest_area[2][1])
 
-    polynomialPoints = []
+    print(y_start, y_end)
 
-    for i in range(y_start, y_end):
-        polynomialPoints.append( ( (i * left_lane[0]**2) + (i * left_lane[1]) + left_lane[2] , i ) )
+    # interest_area = np.float32([
+    #                 [480, 500],
+    #                 [850, 500],
+    #                 [1200, 670],
+    #                 [140, 670]
+    #             ])
 
-    for i in range(y_end - 1, y_start - 1, -1):
-        polynomialPoints.append( ( (i * right_lane[0]**2) + (i * right_lane[1]) + right_lane[2] , i ) )
+    # polynomialPoints = []
 
-    drawnLane = cv2.fillPoly(img, np.int32([polynomialPoints]), color=(0, 255, 0, 0.5))
+    # for i in range(y_start, y_end):
+    #     polynomialPoints.append( ( (i * left_lane[0]**2) + (i * left_lane[1]) + left_lane[2] + interest_area[0][0] + 1 , i ) )
 
-    return drawnLane
+    # for i in range(y_end - 1, y_start - 1, -1):
+    #     polynomialPoints.append( ( (i * right_lane[0]**2) + (i * right_lane[1]) + right_lane[2] + interest_area[0][0] + 1, i ) )
+
+    # drawnLane = cv2.fillPoly(canvas, np.int32([polynomialPoints]), color=(0, 255, 0))
+    drawnLane = cv2.fillPoly(canvas, np.int32([list(zip(lefty, leftx)) + list(reversed(list(zip(righty, rightx))))]), color=(0, 255, 0) )
+
+    print(overhead.shape, canvas.shape)
+
+    plt.figure()
+    plt.suptitle("step")
+    plt.imshow(drawnLane)
+    plt.show()
+
+    unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
+
+    result = cv2.addWeighted(img, 1, unwarpedLane, 0.3, 0)
+
+    return result
 
 #pipeline - accepts an image, returns ???
 def pipeline(img, debug=False):
@@ -424,13 +449,13 @@ def pipeline(img, debug=False):
     combinedThreshold = combinedThresholds(img, debug=debug)
 
     # Perspective transform
-    overheadThreshold = perspectiveTransform(combinedThreshold, debug=debug)
+    overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
 
     #  Detect lane lines
-    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius = detectLaneLines(overheadThreshold, debug=True)
+    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold, debug=True)
 
     # Draw onto image lane
-    highlightedLane = drawLane(img, left_lane_polynomial, right_lane_polynomial)
+    highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
     plt.figure()
     plt.suptitle("Drawn lane")
