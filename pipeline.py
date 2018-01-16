@@ -402,36 +402,9 @@ def drawLane(img, overhead, Minv, lefty, leftx, righty, rightx):
     canvas = np.zeros_like(overhead).astype(np.uint8)
     canvas = np.dstack((canvas, canvas, canvas))
 
-    # y_start is where we paid attention to - the interest area - and we should start there and move DOWN
-    y_start = int(interest_area[0][1])
-    y_end = int(interest_area[2][1])
-
-    print(y_start, y_end)
-
-    # interest_area = np.float32([
-    #                 [480, 500],
-    #                 [850, 500],
-    #                 [1200, 670],
-    #                 [140, 670]
-    #             ])
-
-    # polynomialPoints = []
-
-    # for i in range(y_start, y_end):
-    #     polynomialPoints.append( ( (i * left_lane[0]**2) + (i * left_lane[1]) + left_lane[2] + interest_area[0][0] + 1 , i ) )
-
-    # for i in range(y_end - 1, y_start - 1, -1):
-    #     polynomialPoints.append( ( (i * right_lane[0]**2) + (i * right_lane[1]) + right_lane[2] + interest_area[0][0] + 1, i ) )
-
-    # drawnLane = cv2.fillPoly(canvas, np.int32([polynomialPoints]), color=(0, 255, 0))
-    drawnLane = cv2.fillPoly(canvas, np.int32([list(zip(lefty, leftx)) + list(reversed(list(zip(righty, rightx))))]), color=(0, 255, 0) )
+    drawnLane = cv2.fillPoly(canvas, np.int32([list(zip(leftx, lefty)) + list(reversed(list(zip(rightx, righty))))]), color=(0, 255, 0) )
 
     print(overhead.shape, canvas.shape)
-
-    plt.figure()
-    plt.suptitle("step")
-    plt.imshow(drawnLane)
-    plt.show()
 
     unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
 
