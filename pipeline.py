@@ -412,6 +412,53 @@ def drawLane(img, overhead, Minv, lefty, leftx, righty, rightx):
 
     return result
 
+def drawLane2(img, overhead, Minv, left_line, right_line):
+
+    #We draw the polynomial in the overhead clone first
+    canvas = np.zeros_like(overhead).astype(np.uint8)
+    canvas = np.dstack((canvas, canvas, canvas))
+
+    y_min = int(interest_area[0][1])
+    y_max = int(interest_area[2][1])
+
+    # interest_area = np.float32([
+    #                 [480, 500],
+    #                 [850, 500],
+    #                 [1200, 670],
+    #                 [140, 670]
+    #             ])
+
+    # How many points, including min/max, to include
+    total_points = 5
+    margin = (y_max - y_min) / total_points
+
+    ypoints = []
+    xpoints = []
+
+    print(y_min, y_max, margin)
+
+    for y in range(y_min, int(y_max + margin), int(margin)):
+        print(y)
+        ypoints.append( ( int((left_line[0] * (y **2)) + (left_line[1] * (y **2)) + left_line[0]) , y ) )
+        xpoints.append( ( int((right_line[0] * (y **2)) + (right_line[1] * (y **2)) + right_line[0]) , y ) )
+
+    points = ypoints + xpoints[::-1]
+
+    print(points)
+
+    drawnLane = cv2.fillPoly(canvas, np.int32([points]), color=(0, 255, 0))
+
+    plt.figure()
+    plt.suptitle("Step")
+    plt.imshow(drawnLane)
+    plt.show()
+
+    unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
+
+    result = cv2.addWeighted(img, 1, unwarpedLane, 0.3, 0)
+
+    return result
+
 #pipeline - accepts an image, returns ???
 def pipeline(img, debug=False):
 
@@ -429,6 +476,8 @@ def pipeline(img, debug=False):
 
     # Draw onto image lane
     highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
+
+    # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
     plt.figure()
     plt.suptitle("Drawn lane")
