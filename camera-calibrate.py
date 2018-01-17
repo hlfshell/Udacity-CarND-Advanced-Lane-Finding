@@ -12,7 +12,7 @@ images_folder = "./camera_cal"
 output_file = 'camera_calibration.p'
 
 # Inside corners in X and y, respectively:
-nX = 8
+nX = 9
 nY = 6
 
 objPoints = [] # objPoints are predefined points where I want the corners to go
