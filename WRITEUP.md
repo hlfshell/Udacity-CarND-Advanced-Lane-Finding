@@ -126,7 +126,7 @@ We also calculate the curvature of each lane using Udacity provided pixels per m
 
 In the function `drawLane` on line 399, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
 
-![Result](17.result.png)
+![Result](examples/17.result.png)
 
 ## Test images 
 The file `generate_example_images.py` will iterate over all files in the `test_images` folder, run the pipeline on each, and output it to `output_images`. Below are some examples:
