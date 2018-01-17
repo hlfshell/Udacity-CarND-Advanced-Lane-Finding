@@ -109,3 +109,32 @@ Now that we have the thresholded image, we take a perspective transform in funct
 Here, we take an interest area (an area selected to be just the lane in front of us in most images) and transform the perspective to make the image appear as if we're taking a bird's eye view of it. We also generate the inverse of this transformation, for later use. We utilize OpenCV's `cv2.getPerspectiveTransform` and `cv2.warpPerspective` functions to do this.
 
 ![Perspective Transform](examples/15.perspective.transform.png)
+
+### Detect Lane Lines
+
+The function `detectLaneLines` on line 278 creates a sliding window of the image, where we consider rows from the bottom up to detect the two highest peaks of data (left and right of the center of the image) by creating a histogram.
+
+We iterate over the image, row by row, until we form a series of points that represent a line going over each lane line.
+
+We then use numpy's `polyfit` function to find a second order polynomial function for each lane line. Below are the lines plotted over the lane lines - it's a good match!
+
+We also calculate the curvature of each lane using Udacity provided pixels per meter calibration from the cameras.
+
+![Extrapolated lane lines](examples/16.extrapolated.lane.lines.png)
+
+### Highlight the lane
+
+In the function `drawLane` on line 399, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
+
+![Result](17.result.png)
+
+## Test images 
+The file `generate_example_images.py` will iterate over all files in the `test_images` folder, run the pipeline on each, and output it to `output_images`. Below are some examples:
+
+![test1](test_images/test1.jpg) ![test1](output_images/test1.jpg)
+![test1](test_images/test2.jpg) ![test1](output_images/test2.jpg)
+![test1](test_images/test3.jpg) ![test1](output_images/test3.jpg)
+
+## Video output
+
+`video.py` file will load the pipeline and execute the pipeline on each frame of a provided video - for the project, I ran it on `project_video.mp4`. The output can be found in `output_images/project_video_output.mp4`.
