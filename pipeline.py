@@ -472,7 +472,7 @@ def pipeline(img, debug=False):
     overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
 
     #  Detect lane lines
-    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold)
+    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold, debug)
 
     # Draw onto image lane
     highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
