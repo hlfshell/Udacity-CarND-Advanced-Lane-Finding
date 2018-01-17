@@ -448,10 +448,10 @@ def drawLane2(img, overhead, Minv, left_line, right_line):
 
     drawnLane = cv2.fillPoly(canvas, np.int32([points]), color=(0, 255, 0))
 
-    plt.figure()
-    plt.suptitle("Step")
-    plt.imshow(drawnLane)
-    plt.show()
+    # plt.figure()
+    # plt.suptitle("Step")
+    # plt.imshow(drawnLane)
+    # plt.show()
 
     unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
 
@@ -472,17 +472,11 @@ def pipeline(img, debug=False):
     overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
 
     #  Detect lane lines
-    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold, debug=True)
+    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold)
 
     # Draw onto image lane
     highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
-    # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
+    # highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
-    plt.figure()
-    plt.suptitle("Drawn lane")
-    plt.imshow(highlightedLane)
-    plt.show()
-
-
-    pass
+    return highlightedLane, leftCurveRadius, rightCurveRadius, averageCurveRadius
