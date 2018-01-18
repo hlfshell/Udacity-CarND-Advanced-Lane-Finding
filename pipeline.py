@@ -285,6 +285,7 @@ def detectLaneLines(img, debug=False):
 
     # Define our image midpoint (via histogram shape, since we're working with that)
     midpoint = np.int(histogram.shape[0]/2)
+
     # Left peak base
     leftx_base = np.argmax(histogram[:midpoint])
     # Right peak base
@@ -378,6 +379,9 @@ def detectLaneLines(img, debug=False):
     meters_per_pix_y = 30/720
     meters_per_pix_x = 3.7/700
 
+    # How wide is a highway lane? (3.7m)
+    highway_width = 3.7
+
     y = img.shape[0] - 1
 
     left_lane_meters_polynomial = np.polyfit(lefty * meters_per_pix_y, leftx * meters_per_pix_x, 2)
@@ -389,7 +393,19 @@ def detectLaneLines(img, debug=False):
     # Average curve should be the difference
     averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
 
-    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx
+    # Calculate how far off from center the car is, assuming the camera is centered
+    left_lane_bottom = (left_lane_polynomial[0]*y**2) + (left_lane_polynomial[1]*y) + (left_lane_polynomial[2])
+    right_lane_bottom = (right_lane_polynomial[0]*y**2) + (right_lane_polynomial[1]*y) + (right_lane_polynomial[2])
+
+    center = int(img.shape[1] / 2) # halfway point of image is our dead center
+
+    calculated_center = (right_lane_bottom + left_lane_bottom) / 2
+    widthInPixels = right_lane_bottom - left_lane_bottom
+    metersPerPixelForLane = highway_width / widthInPixels
+
+    metersOffCenter = metersPerPixelForLane * (calculated_center - center)
+
+    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter
 
 # drawLane - draws in the lane via a polygon calculated from polynomials
 # img - input
@@ -424,17 +440,8 @@ def drawLane2(img, overhead, Minv, left_line, right_line):
     h, w = img.shape[:2]
     x = np.arange(w)
 
-    # left = (lambda x: (left_line[0] * x**2) + (left_line[1] * x) + left_line[2])(x)
-    # right = (lambda x: (right_line[0] * x**2) + (right_line[1] * x) + right_line[2])(x)
     left = lambda x: (left_line[0] * x**2) + (left_line[1] * x) + left_line[2]
     right = lambda x: (right_line[0] * x**2) + (right_line[1] * x) + right_line[2]
-
-    # pointsLeft  = np.array([[[xi, yi]] for xi, yi in zip(x, left) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
-    #            #  np.array([[[xi, yi]] for xi, yi in zip(x, y1) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
-    # pointsRight = np.array([[[xi, yi]] for xi, yi in zip(x, right) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
-    # print(pointsRight.shape, pointsLeft.shape)
-    # pointsRight = np.flipud(pointsRight)
-    # points = np.concatenate((pointsLeft, pointsRight))
 
     for h in range(0, img.shape[:2][0]):
         leftPoint = left(h)
@@ -444,23 +451,9 @@ def drawLane2(img, overhead, Minv, left_line, right_line):
             if w >= leftPoint and w <= rightPoint:
                 canvas[h][w] = (0, 255, 0)
 
-    # sobel_binaryy[ (scaled_sobely >= threshold["y"][0]) & (scaled_sobely <= threshold["y"][1]) ] = 1
-
-    # cv2.fillPoly(canvas, [points], color=(0, 255, 0))
-
-    # plt.figure()
-    # plt.suptitle("Step")
-    # plt.imshow(canvas)
-    # plt.show()
-
     unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
 
     result = cv2.addWeighted(img, 1, unwarpedLane, 0.3, 0)
-
-    # plt.figure()
-    # plt.suptitle("result")
-    # plt.imshow(result)
-    # plt.show()
 
     return result
 
@@ -477,11 +470,11 @@ def pipeline(img, debug=False):
     overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
 
     #  Detect lane lines
-    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold, debug)
+    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter = detectLaneLines(overheadThreshold, debug)
 
     # Draw onto image lane
     # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
     highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
-    return highlightedLane, leftCurveRadius, rightCurveRadius, averageCurveRadius
+    return highlightedLane, leftCurveRadius, rightCurveRadius, averageCurveRadius, metersOffCenter
