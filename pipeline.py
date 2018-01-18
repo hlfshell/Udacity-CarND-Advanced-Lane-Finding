@@ -421,41 +421,46 @@ def drawLane2(img, overhead, Minv, left_line, right_line):
     y_min = int(interest_area[0][1])
     y_max = int(interest_area[2][1])
 
-    # interest_area = np.float32([
-    #                 [480, 500],
-    #                 [850, 500],
-    #                 [1200, 670],
-    #                 [140, 670]
-    #             ])
+    h, w = img.shape[:2]
+    x = np.arange(w)
 
-    # How many points, including min/max, to include
-    total_points = 5
-    margin = (y_max - y_min) / total_points
+    # left = (lambda x: (left_line[0] * x**2) + (left_line[1] * x) + left_line[2])(x)
+    # right = (lambda x: (right_line[0] * x**2) + (right_line[1] * x) + right_line[2])(x)
+    left = lambda x: (left_line[0] * x**2) + (left_line[1] * x) + left_line[2]
+    right = lambda x: (right_line[0] * x**2) + (right_line[1] * x) + right_line[2]
 
-    ypoints = []
-    xpoints = []
+    # pointsLeft  = np.array([[[xi, yi]] for xi, yi in zip(x, left) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
+    #            #  np.array([[[xi, yi]] for xi, yi in zip(x, y1) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
+    # pointsRight = np.array([[[xi, yi]] for xi, yi in zip(x, right) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
+    # print(pointsRight.shape, pointsLeft.shape)
+    # pointsRight = np.flipud(pointsRight)
+    # points = np.concatenate((pointsLeft, pointsRight))
 
-    print(y_min, y_max, margin)
+    for h in range(0, img.shape[:2][0]):
+        leftPoint = left(h)
+        rightPoint = right(h)
+        
+        for w in range(0, img.shape[:2][1]):
+            if w >= leftPoint and w <= rightPoint:
+                canvas[h][w] = (0, 255, 0)
 
-    for y in range(y_min, int(y_max + margin), int(margin)):
-        print(y)
-        ypoints.append( ( int((left_line[0] * (y **2)) + (left_line[1] * (y **2)) + left_line[0]) , y ) )
-        xpoints.append( ( int((right_line[0] * (y **2)) + (right_line[1] * (y **2)) + right_line[0]) , y ) )
+    # sobel_binaryy[ (scaled_sobely >= threshold["y"][0]) & (scaled_sobely <= threshold["y"][1]) ] = 1
 
-    points = ypoints + xpoints[::-1]
-
-    print(points)
-
-    drawnLane = cv2.fillPoly(canvas, np.int32([points]), color=(0, 255, 0))
+    # cv2.fillPoly(canvas, [points], color=(0, 255, 0))
 
     # plt.figure()
     # plt.suptitle("Step")
-    # plt.imshow(drawnLane)
+    # plt.imshow(canvas)
     # plt.show()
 
     unwarpedLane = cv2.warpPerspective(canvas, Minv, (img.shape[1], img.shape[0]))
 
     result = cv2.addWeighted(img, 1, unwarpedLane, 0.3, 0)
+
+    # plt.figure()
+    # plt.suptitle("result")
+    # plt.imshow(result)
+    # plt.show()
 
     return result
 
@@ -475,8 +480,8 @@ def pipeline(img, debug=False):
     left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx = detectLaneLines(overheadThreshold, debug)
 
     # Draw onto image lane
-    highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
+    # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
-    # highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
+    highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
     return highlightedLane, leftCurveRadius, rightCurveRadius, averageCurveRadius
