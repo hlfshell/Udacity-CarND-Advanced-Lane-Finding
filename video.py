@@ -27,7 +27,7 @@ def handleFrame(image):
 
     # Add curvature text to the image
     cv2.putText(highlightedLane,"Curvature is {:0.2f}".format(line["left"]), (10,600) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
-    cv2.putText(highlightedLane,"Distance from center is {:0.2f}".format(line["offcenter"]), (10,650) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
+    cv2.putText(highlightedLane,"Distance from center is {:0.2f} meters".format(line["offcenter"]), (10,650) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
 
     return highlightedLane    
 

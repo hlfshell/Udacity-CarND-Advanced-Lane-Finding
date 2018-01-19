@@ -15,7 +15,7 @@ for filename in images:
     result, _, _, curve, offcenter = pipeline(img)
 
     cv2.putText(result,"Curvature is {:0.2f}".format(curve), (10,600) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
-    cv2.putText(result,"Distance from center is {:0.2f}".format(offcenter), (10,650) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
+    cv2.putText(result,"Distance from center is {:0.2f} meters".format(offcenter), (10,650) , cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2,cv2.LINE_AA)
 
     result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
 
