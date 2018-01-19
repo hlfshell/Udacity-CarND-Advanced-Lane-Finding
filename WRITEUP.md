@@ -140,3 +140,19 @@ The file `generate_example_images.py` will iterate over all files in the `test_i
 ## Video output
 
 `video.py` file will load the pipeline and execute the pipeline on each frame of a provided video - for the project, I ran it on `project_video.mp4`. The output can be found in `output_images/project_video_output.mp4`.
+
+## Potential Problems
+
+The pipeline isn't perfect - it has several problems that can pop up that I've seen in other videos.
+
+Extreme shadows caused by direct overhead objects can cause the lane lines to draw oddly - this is mostly because while we ignore the lightness channel during color thresholding, we still have a sharp gradient change for the sobels, and we have half our frame light and half dark.
+
+I've also witnessed large cracks in the road cause issues-  the cracks cause a large blip on the histogram making the car think the lane is much skinnier than it actually is. While I can ignore short term changes in the lane and use the previous "good" reading of the lane, some of these cracks are so long that we'd eventually HAVE to figure out a way to deal with them.
+
+I've also witnessed problems where extreme turns would cause the right lane to disappear, allowing some random mark in the road to take the role of "right lane". An extreme edge case where a lane line disappears needs to be considered.
+
+A possible fix for this would be a more adaptive thresholding - perhaps doing it in a sliding window manner similar to how he handle the histogram.
+
+I absolutely should implement a system that has a minimimum threshold for detection of a lane line, and able to deal with a lane being "off-screen". Perhaps when detecting the lane polynomial I should be appending previous perspective skewed shots of the lane together to make a longer overlayed lane, for a more accurate and smoother polynomial over time.
+
+I also chose the "interest area" - the area where I'm looking at the lane, specifically because none of the examples had a car in it. While I don't intend for the self driving car to tail gate, realistically the car must be able to determine the lane even with a car directly in front of it. As of now, this would throw off lane detection as it would see the car as a peak in the histogram phase and would select *it* as the lane line. This can be fixed when we learn to detect cars - we can then build a bounding box around the car that would be ignored for lane detection.
