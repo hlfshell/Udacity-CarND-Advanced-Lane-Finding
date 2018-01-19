@@ -464,7 +464,7 @@ def pipeline(img, debug=False):
     undistorted = undistort(img, debug=debug)
 
     # Color and Sobel thresholds
-    combinedThreshold = combinedThresholds(img, debug=debug)
+    combinedThreshold = combinedThresholds(undistorted, debug=debug)
 
     # Perspective transform
     overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
