@@ -373,25 +373,12 @@ def detectLaneLines(img, debug=False):
         plt.ylim(720, 0)
         plt.show()
 
-    # Calculate the curvature
-
-    # First, how many meters per pixel (given via udacity - camera specific)
-    meters_per_pix_y = 30/720
-    meters_per_pix_x = 3.7/700
+    # Calculate the curvature and meters off center
 
     # How wide is a highway lane? (3.7m)
     highway_width = 3.7
 
     y = img.shape[0] - 1
-
-    left_lane_meters_polynomial = np.polyfit(lefty * meters_per_pix_y, leftx * meters_per_pix_x, 2)
-    right_lane_meters_polynomial = np.polyfit(righty * meters_per_pix_y, rightx * meters_per_pix_x, 2)
-
-    leftCurveRadius =  ((1 + (2*left_lane_meters_polynomial[0]*y*meters_per_pix_y + left_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_meters_polynomial[0])
-    rightCurveRadius = ((1 + (2*right_lane_meters_polynomial[0]*y*meters_per_pix_y + right_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*right_lane_meters_polynomial[0])
-
-    # Average curve should be the difference
-    averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
 
     # Calculate how far off from center the car is, assuming the camera is centered
     left_lane_bottom = (left_lane_polynomial[0]*y**2) + (left_lane_polynomial[1]*y) + (left_lane_polynomial[2])
@@ -404,6 +391,21 @@ def detectLaneLines(img, debug=False):
     metersPerPixelForLane = highway_width / widthInPixels
 
     metersOffCenter = metersPerPixelForLane * (calculated_center - center)
+
+    # First, how many meters per pixel (given via udacity - camera specific)
+    meters_per_pix_y = 3.048/280 # Here's How I got this # - I looked at the distance in pixels between two dotted lines in examples
+                              # By US Law, these are 10 feet apart (3.048m). Measure the pixels in the image, do the conversion, and then here we are!
+                              # By looking at images, it was about 280 pixels between dotted lane lines
+    meters_per_pix_x = metersPerPixelForLane # Same as above!
+
+    left_lane_meters_polynomial = np.polyfit(lefty * meters_per_pix_y, leftx * meters_per_pix_x, 2)
+    right_lane_meters_polynomial = np.polyfit(righty * meters_per_pix_y, rightx * meters_per_pix_x, 2)
+
+    leftCurveRadius =  ((1 + (2*left_lane_meters_polynomial[0]*y*meters_per_pix_y + left_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*left_lane_meters_polynomial[0])
+    rightCurveRadius = ((1 + (2*right_lane_meters_polynomial[0]*y*meters_per_pix_y + right_lane_meters_polynomial[1])**2)**1.5) / np.absolute(2*right_lane_meters_polynomial[0])
+
+    # Average curve should be the difference
+    averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
 
     return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter
 
