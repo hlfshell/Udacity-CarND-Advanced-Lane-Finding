@@ -275,7 +275,7 @@ def perspectiveTransform(img, transform_area=None, to_area=None , debug=False):
 # img - input image (overhead threshold)
 # debug - whether or not to show debug info
 # returns leftLinePoints, rightLinePoints
-def detectLaneLines(img, debug=False):
+def detectLaneLines(img, previousLanes=None, debug=False):
     histogram = np.sum( img[ int(img.shape[0]/2):,:], axis=0)
 
     if debug is True:
@@ -311,40 +311,51 @@ def detectLaneLines(img, debug=False):
     # Set the minimum number of pixels found to recenter window
     minpix = 50
 
-    # Empty lists to hold each index of center point of left/right lanes
-    left_lane_indexes = []
-    right_lane_indexes = []
+    if previousLanes is not None and len(previousLanes) is not 0:
+        left_fit = previousLanes[-1:][0]["left_lane_polynomial"]
+        left_lane_indexes = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + 
+        left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + 
+        left_fit[1]*nonzeroy + left_fit[2] + margin))) 
 
-    # Go through window step by step
-    for window in range(nWindows):
-        
-        window_y_low = img.shape[0] - (window + 1) * window_height
-        window_y_high = img.shape[0] - window * window_height
+        right_fit = previousLanes[-1:][0]["right_lane_polynomial"]
+        right_lane_indexes = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + 
+        right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + 
+        right_fit[1]*nonzeroy + right_fit[2] + margin)))  
+    else:
+        # Empty lists to hold each index of center point of left/right lanes
+        left_lane_indexes = []
+        right_lane_indexes = []
 
-        window_xleft_low = leftx_current - margin
-        window_xleft_high = leftx_current + margin
-        window_xright_low = rightx_current - margin
-        window_xright_high = rightx_current + margin
+        # Go through window step by step
+        for window in range(nWindows):
+            
+            window_y_low = img.shape[0] - (window + 1) * window_height
+            window_y_high = img.shape[0] - window * window_height
 
-        #Draw windows if debugging
-        if debug is True:
-            cv2.rectangle(out_img, (window_xleft_low, window_y_low), (window_xleft_high, window_y_high), color= (0,0,255))
-            cv2.rectangle(out_img, (window_xright_low, window_y_low), (window_xright_high, window_y_high), color= (0,0,255))
+            window_xleft_low = leftx_current - margin
+            window_xleft_high = leftx_current + margin
+            window_xright_low = rightx_current - margin
+            window_xright_high = rightx_current + margin
 
-        good_left_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xleft_low) & (nonzerox < window_xleft_high) ).nonzero()[0]
-        good_right_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xright_low) & (nonzerox < window_xright_high) ).nonzero()[0]
+            #Draw windows if debugging
+            if debug is True:
+                cv2.rectangle(out_img, (window_xleft_low, window_y_low), (window_xleft_high, window_y_high), color= (0,0,255))
+                cv2.rectangle(out_img, (window_xright_low, window_y_low), (window_xright_high, window_y_high), color= (0,0,255))
 
-        left_lane_indexes.append(good_left_indexes)
-        right_lane_indexes.append(good_right_indexes)
+            good_left_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xleft_low) & (nonzerox < window_xleft_high) ).nonzero()[0]
+            good_right_indexes = ( (nonzeroy >= window_y_low) & (nonzeroy < window_y_high) & (nonzerox >= window_xright_low) & (nonzerox < window_xright_high) ).nonzero()[0]
 
-        # If we detect below a certain # of pixels, recenter window
-        if len(good_left_indexes) > minpix:
-            leftx_current = np.int(np.mean(nonzerox[good_left_indexes]))
-        if len(good_right_indexes) > minpix:
-            rightx_current = np.int(np.mean(nonzerox[good_right_indexes]))
+            left_lane_indexes.append(good_left_indexes)
+            right_lane_indexes.append(good_right_indexes)
 
-    left_lane_indexes = np.concatenate(left_lane_indexes)
-    right_lane_indexes = np.concatenate(right_lane_indexes)
+            # If we detect below a certain # of pixels, recenter window
+            if len(good_left_indexes) > minpix:
+                leftx_current = np.int(np.mean(nonzerox[good_left_indexes]))
+            if len(good_right_indexes) > minpix:
+                rightx_current = np.int(np.mean(nonzerox[good_right_indexes]))
+
+        left_lane_indexes = np.concatenate(left_lane_indexes)
+        right_lane_indexes = np.concatenate(right_lane_indexes)
 
     leftx = nonzerox[left_lane_indexes]
     lefty = nonzeroy[left_lane_indexes]
@@ -354,6 +365,24 @@ def detectLaneLines(img, debug=False):
     # Fit a polynomial to each
     left_lane_polynomial = np.polyfit(lefty, leftx, 2)
     right_lane_polynomial = np.polyfit(righty, rightx, 2)
+
+    if previousLanes is not None:
+        left_avg = [0, 0, 0]
+        right_avg = [0, 0, 0]
+        count = 0
+        for lane in previousLanes[-29:]:
+            count += 1
+            left_avg = np.add(left_avg, lane["left_lane_polynomial"])
+            right_avg = np.add(right_avg, lane["right_lane_polynomial"])
+
+        left_avg = np.add(left_avg, left_lane_polynomial)
+        right_avg = np.add(right_avg, right_lane_polynomial)
+
+        left_avg = left_avg / (count + 1)
+        right_avg = right_avg / (count + 1)
+
+        left_lane_polynomial = left_avg
+        right_lane_polynomial = right_avg
 
     # If debugging, draw lane lines
     if debug is True:
@@ -407,7 +436,7 @@ def detectLaneLines(img, debug=False):
     # Average curve should be the difference
     averageCurveRadius = (leftCurveRadius + rightCurveRadius) / 2
 
-    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter
+    return left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter, highway_width
 
 # drawLane - draws in the lane via a polygon calculated from polynomials
 # img - input
@@ -460,7 +489,7 @@ def drawLane2(img, overhead, Minv, left_line, right_line):
     return result
 
 #pipeline - accepts an image, returns ???
-def pipeline(img, debug=False):
+def pipeline(img, previousLanes=None, debug=False):
 
     # Undistort image
     undistorted = undistort(img, debug=debug)
@@ -472,11 +501,11 @@ def pipeline(img, debug=False):
     overheadThreshold, transform_matrix, inverse_transform_matrix = perspectiveTransform(combinedThreshold, debug=debug)
 
     #  Detect lane lines
-    left_lane_polynomial, right_lane_polynomial, leftCurveRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter = detectLaneLines(overheadThreshold, debug)
+    left_lane_polynomial, right_lane_polynomial, leftCurvRadius, rightCurveRadius, averageCurveRadius, lefty, leftx, righty, rightx, metersOffCenter, highwayWidth = detectLaneLines(overheadThreshold, previousLanes=previousLanes, debug=debug)
 
     # Draw onto image lane
     # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
     highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
-    return highlightedLane, leftCurveRadius, rightCurveRadius, averageCurveRadius, metersOffCenter
+    return highlightedLane, left_lane_polynomial, right_lane_polynomial, averageCurveRadius, metersOffCenter, highwayWidth
