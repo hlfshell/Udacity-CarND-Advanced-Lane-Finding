@@ -120,7 +120,7 @@ We iterate over the image, row by row, until we form a series of points that rep
 
 We then use numpy's `polyfit` function to find a second order polynomial function for each lane line. Below are the lines plotted over the lane lines - it's a good match!
 
-We also calculate the curvature of each lane using Udacity provided pixels per meter calibration from the cameras.
+We also calculate the curvature of each lane. To do so, we utilized different values of meters per pixel in the X and Y dimensions. To figure this out, I utilized the width of the lane in pixels per the expected 3.7m width of a highway lane. I found a shot of the "dotted" lane lines and, in the overhead perspective, checked the amount of pixels between them. This is a standard 10 feet (3.048 meters) in the US, so I used this resulting calculation as my Y pixels per meter.
 
 *IF* we are processing video and thus have a temporal element to the images, we can reference previousLanes - literally previously calculated lanes. We change the histogram's search window for lane lines to be within a margin of the *prior* lane. This prevents jumpy lanes from frame to frame, as it limits the search window. This also makes the search time significantly faster, as we're scanning less range per window.
 
