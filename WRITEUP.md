@@ -122,11 +122,13 @@ We then use numpy's `polyfit` function to find a second order polynomial functio
 
 We also calculate the curvature of each lane using Udacity provided pixels per meter calibration from the cameras.
 
+*IF* we are processing video and thus have a temporal element to the images, we can reference previousLanes - literally previously calculated lanes. We change the histogram's search window for lane lines to be within a margin of the *prior* lane. This prevents jumpy lanes from frame to frame, as it limits the search window. This also makes the search time significantly faster, as we're scanning less range per window.
+
 ![Extrapolated lane lines](examples/16.extrapolated.lane.lines.png)
 
 ### Highlight the lane
 
-In the function `drawLane` on line 399, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
+In the function `drawLane2` on line 462, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
 
 ![Result](examples/17.result.png)
 
@@ -140,6 +142,12 @@ The file `generate_example_images.py` will iterate over all files in the `test_i
 ## Video output
 
 `video.py` file will load the pipeline and execute the pipeline on each frame of a provided video - for the project, I ran it on `project_video.mp4`. The output can be found in `output_images/project_video_output.mp4`.
+
+### Smoothing
+
+Since the video has multiple frames, we consider previous frames when calculating a given frame's lane lines. We discussed this previously in the `detectLaneLines` section.
+
+We do additional smoothing in `video.py` - we average the polynomials for the previous 29 frames plus this current frame (approximately one second of video) to create a smoother change of the lane lines as time moves on. This resulted in a more resilient output, as a really poor read in a frame was limited in it's overall effect on the resultant lane line.
 
 ## Potential Problems
 
