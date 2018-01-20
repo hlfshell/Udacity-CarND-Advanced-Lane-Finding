@@ -114,7 +114,7 @@ Here, we take an interest area (an area selected to be just the lane in front of
 
 ### Detect Lane Lines
 
-The function `detectLaneLines` on line 278 creates a sliding window of the image, where we consider rows from the bottom up to detect the two highest peaks of data (left and right of the center of the image) by creating a histogram.
+The function `detectLaneLines` on line 289 creates a sliding window of the image, where we consider rows from the bottom up to detect the two highest peaks of data (left and right of the center of the image) by creating a histogram.
 
 We iterate over the image, row by row, until we form a series of points that represent a line going over each lane line.
 
@@ -128,7 +128,7 @@ We also calculate the curvature of each lane. To do so, we utilized different va
 
 ### Highlight the lane
 
-In the function `drawLane2` on line 462, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
+In the function `drawLane2` on line 473, we use the aforementioned inverse perspective transform generated during the perspective transform step, and the extrapolated lane line polynomials + detected data, to draw a highlight area over where we think the lane is.
 
 ![Result](examples/17.result.png)
 
@@ -146,8 +146,6 @@ The file `generate_example_images.py` will iterate over all files in the `test_i
 ### Smoothing
 
 Since the video has multiple frames, we consider previous frames when calculating a given frame's lane lines. We discussed this previously in the `detectLaneLines` section.
-
-We do additional smoothing in `video.py` - we average the polynomials for the previous 29 frames plus this current frame (approximately one second of video) to create a smoother change of the lane lines as time moves on. This resulted in a more resilient output, as a really poor read in a frame was limited in it's overall effect on the resultant lane line.
 
 ## Potential Problems
 
