@@ -13,12 +13,13 @@ with open("./camera_calibration.p", "rb") as filename:
     camera_calibration = pickle.load(filename)
 
 # interest_area is the area of the road we're interested in - changeable in function, set here for ease of use
-interest_area = np.float32([
-                    [480, 500],
-                    [850, 500],
-                    [1200, 670],
-                    [140, 670]
-                ])
+# interest_area = np.float32([
+#                     [480, 500],
+#                     [850, 500],
+#                     [1200, 670],
+#                     [140, 670]
+#                 ])
+interest_area = np.float32([ [600, 450], [720, 450], [1200, 670], [140, 670] ])
 
 color_thresholds = { "h": (15, 100), "s": (90, 255) }
 
@@ -46,12 +47,22 @@ def grabTestImage(imgNum=None):
 
     return img
 
+ret, mtx, dist, rvecs, tvecs = None, None, None, None, None
+
+def calibrateCamera(img):
+    global ret, mtx, dist, rvecs, tvecs
+    image_size = (img.shape[1], img.shape[0])
+    # calibrate the camera once and reuse in undistort
+    # Do this out here so we don't run it every time
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(camera_calibration["objPoints"], camera_calibration["imgPoints"], image_size, None, None)
+
 # given an image, undistory per camera calibration
 def undistort(img, debug=False):
-    image_size = (img.shape[1], img.shape[0])
+    global ret, mtx, dist, rvecs, tvecs
+    if ret is None:
+        calibrateCamera(img)
 
-    # calibrate the camera
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(camera_calibration["objPoints"], camera_calibration["imgPoints"], image_size, None, None)
+    image_size = (img.shape[1], img.shape[0])
 
     # use calibration to undistort image
     undistorted = cv2.undistort(img, mtx, dist, None, mtx)
@@ -366,23 +377,23 @@ def detectLaneLines(img, previousLanes=None, debug=False):
     left_lane_polynomial = np.polyfit(lefty, leftx, 2)
     right_lane_polynomial = np.polyfit(righty, rightx, 2)
 
-    if previousLanes is not None:
-        left_avg = [0, 0, 0]
-        right_avg = [0, 0, 0]
-        count = 0
-        for lane in previousLanes[-29:]:
-            count += 1
-            left_avg = np.add(left_avg, lane["left_lane_polynomial"])
-            right_avg = np.add(right_avg, lane["right_lane_polynomial"])
+    # if previousLanes is not None:
+    #     left_avg = [0, 0, 0]
+    #     right_avg = [0, 0, 0]
+    #     count = 0
+    #     for lane in previousLanes[-10:]:
+    #         count += 1
+    #         left_avg = np.add(left_avg, lane["left_lane_polynomial"])
+    #         right_avg = np.add(right_avg, lane["right_lane_polynomial"])
 
-        left_avg = np.add(left_avg, left_lane_polynomial)
-        right_avg = np.add(right_avg, right_lane_polynomial)
+    #     left_avg = np.add(left_avg, left_lane_polynomial)
+    #     right_avg = np.add(right_avg, right_lane_polynomial)
 
-        left_avg = left_avg / (count + 1)
-        right_avg = right_avg / (count + 1)
+    #     left_avg = left_avg / (count + 1)
+    #     right_avg = right_avg / (count + 1)
 
-        left_lane_polynomial = left_avg
-        right_lane_polynomial = right_avg
+    #     left_lane_polynomial = left_avg
+    #     right_lane_polynomial = right_avg
 
     # If debugging, draw lane lines
     if debug is True:
@@ -422,9 +433,9 @@ def detectLaneLines(img, previousLanes=None, debug=False):
     metersOffCenter = metersPerPixelForLane * (calculated_center - center)
 
     # First, how many meters per pixel (given via udacity - camera specific)
-    meters_per_pix_y = 3.048/280 # Here's How I got this # - I looked at the distance in pixels between two dotted lines in examples
+    meters_per_pix_y = 3.048/75 # Here's How I got this # - I looked at the distance in pixels between two dotted lines in examples
                               # By US Law, these are 10 feet apart (3.048m). Measure the pixels in the image, do the conversion, and then here we are!
-                              # By looking at images, it was about 280 pixels between dotted lane lines
+                              # By looking at images, it was about 75 pixels between dotted lane lines
     meters_per_pix_x = metersPerPixelForLane # Same as above!
 
     left_lane_meters_polynomial = np.polyfit(lefty * meters_per_pix_y, leftx * meters_per_pix_x, 2)
@@ -506,6 +517,6 @@ def pipeline(img, previousLanes=None, debug=False):
     # Draw onto image lane
     # highlightedLane = drawLane(img, overheadThreshold, inverse_transform_matrix, lefty, leftx, righty, rightx)
 
-    highlightedLane = drawLane2(img, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
+    highlightedLane = drawLane2(undistorted, overheadThreshold, inverse_transform_matrix, left_lane_polynomial, right_lane_polynomial)
 
     return highlightedLane, left_lane_polynomial, right_lane_polynomial, averageCurveRadius, metersOffCenter, highwayWidth

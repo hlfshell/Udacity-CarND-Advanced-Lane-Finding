@@ -42,6 +42,6 @@ def handleFrame(image):
 
     return highlightedLane    
 
-clip1 = VideoFileClip("./project_video.mp4")
+clip1 = VideoFileClip("./short_test_clips/tough.mp4")
 output_clip = clip1.fl_image(handleFrame)
-output_clip.write_videofile("./output_images/project_video_output.mp4", audio=False)
+output_clip.write_videofile("./output_images/tough.mp4", audio=False)
